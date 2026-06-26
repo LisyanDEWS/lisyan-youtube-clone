@@ -31,7 +31,7 @@
               <video-card
                 :card="{ maxWidth: 350 }"
                 :video="video"
-                :channel="video.userId"
+                :channel="video.userId || video.author"
               ></video-card>
             </v-skeleton-loader>
           </v-col>
@@ -77,7 +77,7 @@ import InfiniteLoading from 'vue-infinite-loading'
 import moment from 'moment'
 
 import VideoCard from '@/components/VideoCard'
-import VideoService from '@/services/VideoService'
+import { invidiousApi } from '@/services/invidious'
 
 export default {
   name: 'Home',
@@ -94,23 +94,23 @@ export default {
         this.loading = true
       }
 
-      const videos = await VideoService.getAll('public', { page: this.page })
-        .catch((err) => {
-          console.log(err)
-          this.errored = true
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      const videos = await invidiousApi.getTrending('US', 'default').catch((err) => {
+        console.log(err)
+        this.errored = true
+      }).finally(() => {
+        this.loading = false
+      })
 
-      if (typeof videos === 'undefined') return
+      if (!videos) return
 
-      if (videos.data.data.length) {
+      const mapped = Array.isArray(videos) ? videos : videos.videos || []
+
+      if (mapped.length) {
         this.page += 1
-        this.videos.push(...videos.data.data)
-        $state.loaded()
+        this.videos.push(...mapped)
+        if ($state) $state.loaded()
         this.loaded = true
-      } else {
+      } else if ($state) {
         $state.complete()
       }
     },
