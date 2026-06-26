@@ -16,55 +16,37 @@
         outlined
         dense
         v-model="searchText"
+        @keyup.enter="search"
         @click:append="search"
       ></v-text-field>
-
       <v-spacer></v-spacer>
-
-      <v-btn
-        tile
-        outlined
-        color="blue"
-        class="font-weight-bold"
-        v-if="!$store.getters.isAuthenticated"
-        router
-        to="/signin"
-      >
-        <v-icon left size="26">mdi-account-circle</v-icon> Sign in
-      </v-btn>
-
-      <v-menu offset-y left v-else>
-        <template v-slot:activator="{ on }">
-          <v-btn small color="red" depressed fab v-on="on" class="white--text">
-            <v-avatar v-if="currentUser.photoUrl !== 'no-photo.jpg'">
-              <img
-                :src="`${getUrl}/uploads/avatars/${currentUser.photoUrl}`"
-                :alt="`${currentUser.channelName} avatar`"
-              />
-            </v-avatar>
-            <template v-else>
-              <span class="headline">
-                {{ currentUser.channelName.split('')[0].toUpperCase() }}
-              </span>
-            </template>
-          </v-btn>
-        </template>
-      </v-menu>
     </v-app-bar>
+
+    <v-navigation-drawer v-model="drawer" app>
+      <v-list nav dense>
+        <v-list-item router to="/" exact active-class="primary--text">
+          <v-list-item-icon><v-icon>mdi-home</v-icon></v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>Home</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item router to="/trending" exact active-class="primary--text">
+          <v-list-item-icon><v-icon>mdi-fire</v-icon></v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>Trending</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
   </nav>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
-
 export default {
   data: () => ({
-    drawer: true,
+    drawer: false,
     searchText: ''
   }),
-  computed: {
-    ...mapGetters(['currentUser', 'getUrl', 'isAuthenticated'])
-  },
   methods: {
     search() {
       if (!this.searchText) return

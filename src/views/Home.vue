@@ -31,7 +31,6 @@
               <video-card
                 :card="{ maxWidth: 350 }"
                 :video="video"
-                :channel="video.userId || video.author"
               ></video-card>
             </v-skeleton-loader>
           </v-col>
