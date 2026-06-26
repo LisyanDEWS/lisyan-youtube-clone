@@ -64,7 +64,6 @@
                 <video-card
                   :card="{ maxWidth: 350 }"
                   :video="video"
-                  :channel="video.userId"
                 ></video-card>
               </v-skeleton-loader>
             </v-col>
