@@ -38,6 +38,7 @@ Then put in your api URL
 
 ```
 VUE_APP_URL=http://localhost:3001
+VUE_APP_INVIDIOUS_BASE_URL=https://yewtu.be/api/v1
 ```
 
 ### Install packages
