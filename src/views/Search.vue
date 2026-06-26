@@ -12,12 +12,12 @@
               </div>
             </v-col>
             <v-col class="shrink">
-              <v-btn @click="get">Take action</v-btn>
+              <v-btn @click="getSearchResults">Take action</v-btn>
             </v-col>
           </v-row>
         </v-alert>
         <v-col v-else cols="12" sm="12" md="10" lg="11">
-          <template v-if="results.length === 0">
+          <template v-if="results.length === 0 && !loading">
             <p class="text-center">Ops! No search results</p>
           </template>
           <div
@@ -34,81 +34,18 @@
               large
             >
               <v-card
-                :to="`/channels/${result._id}`"
-                class="card mb-10"
-                v-if="typeof result.channelName !== 'undefined'"
-                tile
-                flat
-              >
-                <v-row no-gutters justify="center">
-                  <v-col cols="10" sm="10" md="3" lg="3" class="d-flex">
-                    <!-- <v-responsive max-height="100%"> -->
-
-                    <v-avatar size="120" max-width="150" class="mx-auto red">
-                      <img
-                        v-if="result.photoUrl !== 'no-photo.jpg'"
-                        :src="`${getUrl}/uploads/avatars/${result.photoUrl}`"
-                        :alt="`${result.channelName} avatar`"
-                      />
-                      <template v-else color="red">
-                        <span class="white--text display-1">
-                          {{
-                            result.channelName.split('')[0].toUpperCase()
-                          }}</span
-                        >
-                      </template>
-                    </v-avatar>
-                    <!-- </v-responsive> -->
-                  </v-col>
-                  <v-col cols="10" sm="10" md="6" lg="6" class="justify-center">
-                    <!-- <div class="ml-2"> -->
-                    <v-card-title
-                      class="pl-2 pt-0 subtitle-1 font-weight-bold align-center"
-                    >
-                      {{ result.channelName }}
-                    </v-card-title>
-
-                    <v-card-subtitle
-                      class="pl-2 pt-2 pb-0"
-                      style="line-height: 1.2"
-                    >
-                      {{ result.subscribers }}
-                      subscribers<v-icon>mdi-circle-small</v-icon
-                      >{{ result.videos }} videos
-                    </v-card-subtitle>
-                    <v-card-subtitle class="pl-2 pt-2 pb-0">
-                      {{ result.description }}
-                    </v-card-subtitle>
-                    <!-- </div> -->
-                  </v-col>
-
-                  <!-- <v-col cols="10" sm="10" md="3" lg="3">
-                    <v-btn class="red white--text mt-6" tile depressed
-                      >Subscribed</v-btn
-                    >
-                    <v-btn icon class="ml-5 mt-6"
-                      ><v-icon>mdi-bell</v-icon></v-btn
-                    >
-                  </v-col> -->
-                </v-row>
-              </v-card>
-              <v-card
-                :to="`/watch/${result._id}`"
+                :to="`/watch/${result.videoId || result.id}`"
                 class="card mb-10"
                 tile
                 flat
-                v-else
               >
-                <v-row no-gutters v-if="result.userId">
+                <v-row no-gutters v-if="result.videoId || result.id">
                   <v-col cols="5" sm="3" md="3" lg="3">
                     <v-img
                       class="align-center"
-                      :src="
-                        `${getUrl}/uploads/thumbnails/${result.thumbnailUrl}`
-                      "
-                      :alt="`${result.userId.channelName} avatar`"
-                    >
-                    </v-img>
+                      :src="result.thumbnail || `https://i.ytimg.com/vi/${result.videoId || result.id}/hqdefault.jpg`"
+                      :alt="`${result.title} thumbnail`"
+                    />
                   </v-col>
                   <v-col cols="7" sm="7" md="8" lg="8">
                     <div class="ml-2">
@@ -122,9 +59,9 @@
                         class="pl-2 pt-2 pb-0"
                         style="line-height: 1.2"
                       >
-                        {{ result.userId.channelName }}<br />
-                        {{ result.views }}
-                        views<v-icon>mdi-circle-small</v-icon>6 hours ago
+                        {{ result.author || result.uploader || 'Unknown' }}<br />
+                        {{ result.viewCount || result.views || 0 }}
+                        views
                       </v-card-subtitle>
                       <v-card-subtitle class="pl-2 pt-2 pb-0">
                         {{ result.description }}
@@ -172,8 +109,7 @@
 
 <script>
 import InfiniteLoading from 'vue-infinite-loading'
-import { mapGetters } from 'vuex'
-import SearchService from '@/services/SearchService'
+import { invidiousApi } from '@/services/invidious'
 
 export default {
   data: () => ({
@@ -185,18 +121,14 @@ export default {
     text: '',
     infiniteId: +new Date()
   }),
-  computed: {
-    ...mapGetters(['getUrl'])
-  },
   methods: {
     async getSearchResults($state) {
       this.errored = false
       if (!this.loaded) {
         this.loading = true
       }
-      const results = await SearchService.search(this.page, {
-        text: this.text
-      })
+      const results = await invidiousApi
+        .search(this.text, this.page, 'relevance', '', '', 'video')
         .catch((err) => {
           console.log(err)
           this.errored = true
@@ -206,20 +138,17 @@ export default {
         })
 
       if (!results) return
-      // console.log(results)
-      if (results.data.data.length) {
-        this.page += 1
 
-        this.results.push(...results.data.data)
+      const mapped = Array.isArray(results) ? results : results.items || results.videos || []
+      if (mapped.length) {
+        this.page += 1
+        this.results.push(...mapped)
         if ($state) {
           $state.loaded()
         }
-
         this.loaded = true
-      } else {
-        if ($state) {
-          $state.complete()
-        }
+      } else if ($state) {
+        $state.complete()
       }
     }
   },
@@ -227,13 +156,11 @@ export default {
     InfiniteLoading
   },
   beforeRouteUpdate(to, from, next) {
-    // console.log(to.query['search-query'])
     if (to.query['search-query'] === '') return
     this.text = to.query['search-query']
     this.page = 1
     this.results = []
     this.infiniteId += 1
-
     next()
   },
   mounted() {
@@ -241,5 +168,3 @@ export default {
   }
 }
 </script>
-
-<style></style>
